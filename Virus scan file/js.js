@@ -8,7 +8,7 @@ const results = document.getElementById("results");
 
 const BACKEND_URL = "https://cyberscan-backend.thanurin8.workers.dev";
 
-/* ---------------- EVENTS ---------------- */
+/* ---------------- FILE ---------------- */
 
 dropArea.addEventListener("click", () => fileInput.click());
 
@@ -21,7 +21,7 @@ dropArea.addEventListener("drop", (e) => {
     handleFile(e.dataTransfer.files?.[0]);
 });
 
-/* ---------------- HANDLE FILE ---------------- */
+/* ---------------- HANDLE ---------------- */
 
 function handleFile(file) {
     if (!file) return;
@@ -33,7 +33,6 @@ function handleFile(file) {
         (file.size / 1024 / 1024).toFixed(2) + " MB";
 
     scanStatus.innerText = "Starting scan...";
-
     progress.style.width = "100%";
 
     uploadToBackend(file);
@@ -52,19 +51,22 @@ async function uploadToBackend(file) {
             body: formData
         });
 
-        const data = await res.json();
+        const text = await res.text();
+
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch {
+            throw new Error("Invalid backend response");
+        }
 
         if (!res.ok) {
             throw new Error(data.error || "Backend error");
         }
 
         if (data.status === "PENDING") {
-            scanStatus.innerText = "Scan started... processing";
-
-            // show instant result screen
+            scanStatus.innerText = "Scan started...";
             showPending(file, data.analysisId);
-
-            return;
         }
 
     } catch (err) {
@@ -74,25 +76,23 @@ async function uploadToBackend(file) {
     }
 }
 
-/* ---------------- PENDING UI ---------------- */
+/* ---------------- CHECK RESULT ---------------- */
 
-function showPending(file, analysisId) {
+async function showPending(file, analysisId) {
 
     results.style.display = "block";
 
     document.getElementById("finalResult").innerText = "SCANNING";
-    document.getElementById("statusText").innerText = "Scan in progress...";
-    document.getElementById("ratio").innerText = "Waiting...";
+    document.getElementById("statusText").innerText = "Processing...";
 
-    // optional auto-check every 5 seconds
-    setInterval(async () => {
+    const interval = setInterval(async () => {
 
         try {
             const res = await fetch(
                 `https://www.virustotal.com/api/v3/analyses/${analysisId}`,
                 {
                     headers: {
-                        "x-apikey": "8d7cf6f90ab67ef44182536d2908e19536365d3c66e33e630115dc9a5737be17" // optional if you proxy it later
+                        "x-apikey": "YOUR_VT_API_KEY"
                     }
                 }
             );
@@ -101,27 +101,27 @@ function showPending(file, analysisId) {
 
             if (data?.data?.attributes?.status === "completed") {
 
+                clearInterval(interval);
+
                 const stats = data.data.attributes.stats;
 
-                showFinal(file, stats);
+                showResult(file, stats);
             }
 
         } catch (e) {
-            console.log("still scanning...");
+            console.log("waiting...");
         }
 
     }, 5000);
 }
 
-/* ---------------- FINAL RESULT ---------------- */
+/* ---------------- RESULT ---------------- */
 
-function showFinal(file, data) {
+function showResult(file, stats) {
 
-    const malicious = data.malicious || 0;
-    const harmless = data.harmless || 0;
-    const suspicious = data.suspicious || 0;
-
-    const total = malicious + harmless + suspicious;
+    const malicious = stats.malicious || 0;
+    const harmless = stats.harmless || 0;
+    const total = malicious + harmless;
 
     document.getElementById("finalResult").innerText =
         malicious > 0 ? "DANGEROUS" : "SAFE";
