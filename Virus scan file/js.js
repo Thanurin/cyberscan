@@ -6,7 +6,6 @@ const progress = document.getElementById("progress");
 const scanStatus = document.getElementById("scanStatus");
 const results = document.getElementById("results");
 
-// 🌐 Backend URL (Cloudflare Worker)
 const BACKEND_URL = "https://cyberscan-backend.thanurin8.workers.dev";
 
 /* ---------------- EVENTS ---------------- */
@@ -19,20 +18,14 @@ fileInput.addEventListener("change", (e) => {
 
 dropArea.addEventListener("dragover", (e) => {
     e.preventDefault();
-    dropArea.style.borderColor = "#00ffae";
-});
-
-dropArea.addEventListener("dragleave", () => {
-    dropArea.style.borderColor = "#3b82f6";
 });
 
 dropArea.addEventListener("drop", (e) => {
     e.preventDefault();
-    dropArea.style.borderColor = "#3b82f6";
     handleFile(e.dataTransfer.files?.[0]);
 });
 
-/* ---------------- HANDLE FILE ---------------- */
+/* ---------------- FILE HANDLER ---------------- */
 
 function handleFile(file) {
     if (!file) return;
@@ -44,37 +37,23 @@ function handleFile(file) {
         (file.size / 1024 / 1024).toFixed(2) + " MB";
 
     let percent = 0;
-    scanStatus.innerText = "Preparing upload...";
+    scanStatus.innerText = "Uploading...";
 
-    const progressAnim = setInterval(() => {
+    const timer = setInterval(() => {
         percent += 5;
         progress.style.width = percent + "%";
 
-        if (percent < 40) {
-            scanStatus.innerText = "Uploading file...";
-        } else if (percent < 80) {
-            scanStatus.innerText = "Sending to VirusTotal...";
-        } else {
-            scanStatus.innerText = "Scanning...";
-        }
-
         if (percent >= 100) {
-            clearInterval(progressAnim);
+            clearInterval(timer);
             uploadToBackend(file);
         }
-    }, 70);
+    }, 60);
 }
 
-/* ---------------- BACKEND ---------------- */
+/* ---------------- BACKEND CALL ---------------- */
 
 async function uploadToBackend(file) {
     try {
-
-        if (!file) {
-            alert("No file selected");
-            return;
-        }
-
         const formData = new FormData();
         formData.append("file", file);
 
@@ -83,26 +62,31 @@ async function uploadToBackend(file) {
             body: formData
         });
 
-        const data = await res.json();
+        const text = await res.text();
+
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch {
+            throw new Error("Server returned invalid response");
+        }
 
         if (!res.ok) {
             throw new Error(data.error || "Backend error");
         }
 
         if (data.status === "TIMEOUT") {
-            scanStatus.innerText = "Scan still processing...";
-            alert("VirusTotal is still scanning. Try again.");
+            scanStatus.innerText = "Scan still processing. Try again.";
             return;
         }
 
         scanStatus.innerText = "Scan completed";
-
         showResults(file, data);
 
     } catch (err) {
         console.error(err);
         scanStatus.innerText = "Scan failed";
-        alert("Backend error: " + err.message);
+        alert(err.message);
     }
 }
 
@@ -140,12 +124,9 @@ function showResults(file, data) {
         document.getElementById("statusText").innerText = "No Threats";
     }
 
-    document.getElementById("ratio").innerText =
-        `${malicious} / ${total}`;
-
+    document.getElementById("ratio").innerText = `${malicious} / ${total}`;
     document.getElementById("fileType").innerText =
         file.name.split('.').pop().toUpperCase();
-
     document.getElementById("finalSize").innerText =
         (file.size / 1024 / 1024).toFixed(2) + " MB";
 }
