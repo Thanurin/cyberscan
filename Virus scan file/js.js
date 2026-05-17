@@ -7,15 +7,15 @@ const scanStatus = document.getElementById("scanStatus");
 
 const results = document.getElementById("results");
 
-// 🔗 Your backend
-const BACKEND_URL = "https://cyberscan-backend.thanurin8.workers.dev";
+// 🔗 Backend
+const BACKEND_URL = "http://localhost:3000/scan";
 
 /* ---------------- FILE UPLOAD ---------------- */
 
 dropArea.addEventListener("click", () => fileInput.click());
 
 fileInput.addEventListener("change", (e) => {
-    handleFile(e.target.files[0]);
+    handleFile(e.target.files?.[0]);
 });
 
 dropArea.addEventListener("dragover", (e) => {
@@ -30,7 +30,7 @@ dropArea.addEventListener("dragleave", () => {
 dropArea.addEventListener("drop", (e) => {
     e.preventDefault();
     dropArea.style.borderColor = "#3b82f6";
-    handleFile(e.dataTransfer.files[0]);
+    handleFile(e.dataTransfer.files?.[0]);
 });
 
 /* ---------------- HANDLE FILE ---------------- */
@@ -48,15 +48,22 @@ function handleFile(file) {
 
     let percent = 0;
 
+    scanStatus.innerText = "Preparing upload...";
+
     const progressAnim = setInterval(() => {
 
         percent += 5;
         progress.style.width = percent + "%";
-        scanStatus.innerText = "Uploading... " + percent + "%";
+
+        if (percent < 50) {
+            scanStatus.innerText = "Uploading file...";
+        } else if (percent < 100) {
+            scanStatus.innerText = "Sending to scanner...";
+        }
 
         if (percent >= 100) {
             clearInterval(progressAnim);
-            scanStatus.innerText = "Scanning...";
+            scanStatus.innerText = "Scanning with VirusTotal...";
             uploadToBackend(file);
         }
 
@@ -79,6 +86,13 @@ async function uploadToBackend(file) {
 
         const data = await res.json();
 
+        // 🧠 HANDLE TIMEOUT CASE
+        if (data.status === "TIMEOUT") {
+            scanStatus.innerText = "Scan still processing. Try again later.";
+            alert("VirusTotal is still scanning. Please wait and retry.");
+            return;
+        }
+
         scanStatus.innerText = "Scan completed";
 
         showResults(file, data);
@@ -97,17 +111,19 @@ function showResults(file, data) {
 
     results.style.display = "block";
 
-    // ✅ FIXED: match your backend response
-    const malicious = data.malicious || 0;
-    const harmless = data.harmless || 0;
-    const total = malicious + harmless;
+    // 🛡️ SAFE PARSING
+    const malicious = Number(data.malicious ?? 0);
+    const harmless = Number(data.harmless ?? 0);
+    const suspicious = Number(data.suspicious ?? 0);
 
+    const total = malicious + harmless + suspicious;
     const isDanger = malicious > 0;
 
     const finalResult = document.getElementById("finalResult");
     const statusBadge = document.getElementById("statusBadge");
 
     if (isDanger) {
+
         finalResult.innerText = "DANGEROUS";
         finalResult.className = "danger";
 
@@ -115,7 +131,9 @@ function showResults(file, data) {
         statusBadge.className = "danger";
 
         document.getElementById("statusText").innerText = "Malware Detected";
+
     } else {
+
         finalResult.innerText = "SAFE";
         finalResult.className = "safe";
 
@@ -125,7 +143,8 @@ function showResults(file, data) {
         document.getElementById("statusText").innerText = "No Threats";
     }
 
-    document.getElementById("ratio").innerText = `${malicious} / ${total}`;
+    document.getElementById("ratio").innerText =
+        `${malicious} / ${total}`;
 
     document.getElementById("fileType").innerText =
         file.name.split('.').pop().toUpperCase();
