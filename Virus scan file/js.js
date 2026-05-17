@@ -8,7 +8,7 @@ const scanStatus = document.getElementById("scanStatus");
 const results = document.getElementById("results");
 
 // 🔗 Backend
-const BACKEND_URL = "http://localhost:3000/scan";
+const BACKEND_URL = "https://cyberscan-backend.thanurin8.workers.dev/";
 
 /* ---------------- FILE UPLOAD ---------------- */
 
