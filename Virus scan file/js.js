@@ -7,7 +7,7 @@ const scanStatus = document.getElementById("scanStatus");
 
 const results = document.getElementById("results");
 
-// 🔗 Your backend (Cloudflare Worker)
+// 🔗 Your backend
 const BACKEND_URL = "https://cyberscan-backend.thanurin8.workers.dev";
 
 /* ---------------- FILE UPLOAD ---------------- */
@@ -60,7 +60,7 @@ function handleFile(file) {
             uploadToBackend(file);
         }
 
-    }, 100);
+    }, 80);
 }
 
 /* ---------------- BACKEND ---------------- */
@@ -97,10 +97,9 @@ function showResults(file, data) {
 
     results.style.display = "block";
 
-    const stats = data?.data?.attributes?.last_analysis_stats || {};
-
-    const malicious = stats.malicious || 0;
-    const harmless = stats.harmless || 0;
+    // ✅ FIXED: match your backend response
+    const malicious = data.malicious || 0;
+    const harmless = data.harmless || 0;
     const total = malicious + harmless;
 
     const isDanger = malicious > 0;
