@@ -92,7 +92,7 @@ function showPending(file, analysisId) {
                 `https://www.virustotal.com/api/v3/analyses/${analysisId}`,
                 {
                     headers: {
-                        "x-apikey": "YOUR_VT_API_KEY" // optional if you proxy it later
+                        "x-apikey": "8d7cf6f90ab67ef44182536d2908e19536365d3c66e33e630115dc9a5737be17" // optional if you proxy it later
                     }
                 }
             );
