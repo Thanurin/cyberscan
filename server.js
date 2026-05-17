@@ -1,51 +1,100 @@
+require("dotenv").config();
+
 const express = require("express");
-const cors = require("cors");
 const multer = require("multer");
+const cors = require("cors");
+const axios = require("axios");
+const FormData = require("form-data");
+const fs = require("fs");
 
 const app = express();
 const upload = multer({ dest: "uploads/" });
 
 app.use(cors());
-app.use(express.json());
-app.use(express.static("public"));
 
-// 🟢 Test route
-app.get("/", (req, res) => {
-  res.send("Backend is working 🚀");
-});
+const VT_API_KEY = process.env.VT_API_KEY;
 
-// 🟢 File scan route
-app.post("/scan", upload.single("file"), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: "No file uploaded",
-      });
+/* ---------------- UPLOAD + SCAN ---------------- */
+
+app.post("/scan", upload.single("file"), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "No file uploaded" });
+        }
+
+        const filePath = req.file.path;
+
+        // 1. Upload file to VirusTotal
+        const form = new FormData();
+        form.append("file", fs.createReadStream(filePath));
+
+        const uploadRes = await axios.post(
+            "https://www.virustotal.com/api/v3/files",
+            form,
+            {
+                headers: {
+                    ...form.getHeaders(),
+                    "x-apikey": VT_API_KEY,
+                },
+            }
+        );
+
+        const analysisId = uploadRes.data.data.id;
+
+        // 2. Polling until analysis is done
+        let result;
+        let done = false;
+
+        for (let i = 0; i < 10; i++) { // max 10 tries
+            await new Promise(r => setTimeout(r, 3000));
+
+            const analysisRes = await axios.get(
+                `https://www.virustotal.com/api/v3/analyses/${analysisId}`,
+                {
+                    headers: {
+                        "x-apikey": VT_API_KEY,
+                    },
+                }
+            );
+
+            const status = analysisRes.data.data.attributes.status;
+
+            if (status === "completed") {
+                result = analysisRes.data.data.attributes.stats;
+                done = true;
+                break;
+            }
+        }
+
+        // cleanup file
+        fs.unlinkSync(filePath);
+
+        if (!done) {
+            return res.json({
+                status: "TIMEOUT",
+                message: "Scan still processing, try again"
+            });
+        }
+
+        // 3. Return clean result
+        res.json({
+            malicious: result.malicious,
+            harmless: result.harmless,
+            suspicious: result.suspicious,
+            timeout: result.timeout,
+            undetected: result.undetected,
+            status: result.malicious > 0 ? "DANGEROUS" : "SAFE"
+        });
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Server error" });
     }
-
-    // Fake scan logic (replace later with real API like VirusTotal)
-    const fakeResult = {
-      filename: req.file.originalname,
-      status: "clean",
-      threats: 0,
-      message: "File scanned successfully",
-    };
-
-    res.json({
-      success: true,
-      result: fakeResult,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({
-      success: false,
-      message: "Backend error",
-    });
-  }
 });
 
-const PORT = 5000;
+/* ---------------- START SERVER ---------------- */
+
+const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`CyberScan running on port ${PORT}`);
 });
