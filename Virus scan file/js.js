@@ -16,16 +16,12 @@ fileInput.addEventListener("change", (e) => {
     handleFile(e.target.files?.[0]);
 });
 
-dropArea.addEventListener("dragover", (e) => {
-    e.preventDefault();
-});
-
 dropArea.addEventListener("drop", (e) => {
     e.preventDefault();
     handleFile(e.dataTransfer.files?.[0]);
 });
 
-/* ---------------- FILE HANDLER ---------------- */
+/* ---------------- HANDLE FILE ---------------- */
 
 function handleFile(file) {
     if (!file) return;
@@ -36,24 +32,18 @@ function handleFile(file) {
     document.getElementById("fileSize").innerText =
         (file.size / 1024 / 1024).toFixed(2) + " MB";
 
-    let percent = 0;
-    scanStatus.innerText = "Uploading...";
+    scanStatus.innerText = "Starting scan...";
 
-    const timer = setInterval(() => {
-        percent += 5;
-        progress.style.width = percent + "%";
+    progress.style.width = "100%";
 
-        if (percent >= 100) {
-            clearInterval(timer);
-            uploadToBackend(file);
-        }
-    }, 60);
+    uploadToBackend(file);
 }
 
-/* ---------------- BACKEND CALL ---------------- */
+/* ---------------- BACKEND ---------------- */
 
 async function uploadToBackend(file) {
     try {
+
         const formData = new FormData();
         formData.append("file", file);
 
@@ -62,26 +52,20 @@ async function uploadToBackend(file) {
             body: formData
         });
 
-        const text = await res.text();
-
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch {
-            throw new Error("Server returned invalid response");
-        }
+        const data = await res.json();
 
         if (!res.ok) {
             throw new Error(data.error || "Backend error");
         }
 
-        if (data.status === "TIMEOUT") {
-            scanStatus.innerText = "Scan still processing. Try again.";
+        if (data.status === "PENDING") {
+            scanStatus.innerText = "Scan started... processing";
+
+            // show instant result screen
+            showPending(file, data.analysisId);
+
             return;
         }
-
-        scanStatus.innerText = "Scan completed";
-        showResults(file, data);
 
     } catch (err) {
         console.error(err);
@@ -90,43 +74,67 @@ async function uploadToBackend(file) {
     }
 }
 
-/* ---------------- RESULTS ---------------- */
+/* ---------------- PENDING UI ---------------- */
 
-function showResults(file, data) {
+function showPending(file, analysisId) {
 
     results.style.display = "block";
 
-    const malicious = Number(data.malicious || 0);
-    const harmless = Number(data.harmless || 0);
-    const suspicious = Number(data.suspicious || 0);
+    document.getElementById("finalResult").innerText = "SCANNING";
+    document.getElementById("statusText").innerText = "Scan in progress...";
+    document.getElementById("ratio").innerText = "Waiting...";
+
+    // optional auto-check every 5 seconds
+    setInterval(async () => {
+
+        try {
+            const res = await fetch(
+                `https://www.virustotal.com/api/v3/analyses/${analysisId}`,
+                {
+                    headers: {
+                        "x-apikey": "YOUR_VT_API_KEY" // optional if you proxy it later
+                    }
+                }
+            );
+
+            const data = await res.json();
+
+            if (data?.data?.attributes?.status === "completed") {
+
+                const stats = data.data.attributes.stats;
+
+                showFinal(file, stats);
+            }
+
+        } catch (e) {
+            console.log("still scanning...");
+        }
+
+    }, 5000);
+}
+
+/* ---------------- FINAL RESULT ---------------- */
+
+function showFinal(file, data) {
+
+    const malicious = data.malicious || 0;
+    const harmless = data.harmless || 0;
+    const suspicious = data.suspicious || 0;
 
     const total = malicious + harmless + suspicious;
-    const isDanger = malicious > 0;
 
-    const finalResult = document.getElementById("finalResult");
-    const statusBadge = document.getElementById("statusBadge");
+    document.getElementById("finalResult").innerText =
+        malicious > 0 ? "DANGEROUS" : "SAFE";
 
-    if (isDanger) {
-        finalResult.innerText = "DANGEROUS";
-        finalResult.className = "danger";
+    document.getElementById("statusText").innerText =
+        malicious > 0 ? "Malware Detected" : "Clean";
 
-        statusBadge.innerText = "Threat Found";
-        statusBadge.className = "danger";
+    document.getElementById("ratio").innerText =
+        `${malicious} / ${total}`;
 
-        document.getElementById("statusText").innerText = "Malware Detected";
-    } else {
-        finalResult.innerText = "SAFE";
-        finalResult.className = "safe";
-
-        statusBadge.innerText = "Clean";
-        statusBadge.className = "safe";
-
-        document.getElementById("statusText").innerText = "No Threats";
-    }
-
-    document.getElementById("ratio").innerText = `${malicious} / ${total}`;
     document.getElementById("fileType").innerText =
         file.name.split('.').pop().toUpperCase();
+
     document.getElementById("finalSize").innerText =
         (file.size / 1024 / 1024).toFixed(2) + " MB";
 }
