@@ -6,7 +6,7 @@ const progress = document.getElementById("progress");
 const scanStatus = document.getElementById("scanStatus");
 const results = document.getElementById("results");
 
-const BACKEND_URL = "https://cyberscan-backend.thanuth.workers.dev";
+const BACKEND_URL = "https://cyberscan-backend.thanurin8.workers.dev/";
 
 /* ---------------- FILE EVENTS ---------------- */
 
