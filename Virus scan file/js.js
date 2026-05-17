@@ -8,7 +8,7 @@ const scanStatus = document.getElementById("scanStatus");
 const results = document.getElementById("results");
 
 // 🔗 Your backend (Cloudflare Worker)
-const BACKEND_URL = "https://cyberscan.thanurin8.workers.dev/";
+const BACKEND_URL = "https://cyberscan-backend.thanurin8.workers.dev";
 
 /* ---------------- FILE UPLOAD ---------------- */
 
