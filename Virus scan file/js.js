@@ -7,10 +7,10 @@ const scanStatus = document.getElementById("scanStatus");
 
 const results = document.getElementById("results");
 
-// 🔗 Backend
-const BACKEND_URL = "https://cyberscan-backend.thanurin8.workers.dev/";
+// 🔗 Cloudflare Worker backend (IMPORTANT: no localhost)
+const BACKEND_URL = "https://cyberscan-backend.thanurin8.workers.dev";
 
-/* ---------------- FILE UPLOAD ---------------- */
+/* ---------------- FILE EVENTS ---------------- */
 
 dropArea.addEventListener("click", () => fileInput.click());
 
@@ -55,22 +55,23 @@ function handleFile(file) {
         percent += 5;
         progress.style.width = percent + "%";
 
-        if (percent < 50) {
+        if (percent < 40) {
             scanStatus.innerText = "Uploading file...";
-        } else if (percent < 100) {
-            scanStatus.innerText = "Sending to scanner...";
+        } else if (percent < 80) {
+            scanStatus.innerText = "Sending to VirusTotal...";
+        } else {
+            scanStatus.innerText = "Scanning...";
         }
 
         if (percent >= 100) {
             clearInterval(progressAnim);
-            scanStatus.innerText = "Scanning with VirusTotal...";
             uploadToBackend(file);
         }
 
-    }, 80);
+    }, 70);
 }
 
-/* ---------------- BACKEND ---------------- */
+/* ---------------- BACKEND REQUEST ---------------- */
 
 async function uploadToBackend(file) {
 
@@ -86,9 +87,14 @@ async function uploadToBackend(file) {
 
         const data = await res.json();
 
-        // 🧠 HANDLE TIMEOUT CASE
+        // ❗ HANDLE BACKEND ERROR
+        if (!res.ok) {
+            throw new Error(data.error || "Backend error");
+        }
+
+        // ❗ HANDLE TIMEOUT
         if (data.status === "TIMEOUT") {
-            scanStatus.innerText = "Scan still processing. Try again later.";
+            scanStatus.innerText = "Scan still processing. Try again.";
             alert("VirusTotal is still scanning. Please wait and retry.");
             return;
         }
@@ -99,22 +105,22 @@ async function uploadToBackend(file) {
 
     } catch (err) {
 
-        console.error(err);
-        scanStatus.innerText = "Scan failed";
-        alert("Backend error");
+        console.error("SCAN ERROR:", err);
+        scanStatus.innerText = "Backend error";
+        alert("Backend error: " + err.message);
     }
 }
 
-/* ---------------- RESULTS ---------------- */
+/* ---------------- SHOW RESULTS ---------------- */
 
 function showResults(file, data) {
 
     results.style.display = "block";
 
-    // 🛡️ SAFE PARSING
-    const malicious = Number(data.malicious ?? 0);
-    const harmless = Number(data.harmless ?? 0);
-    const suspicious = Number(data.suspicious ?? 0);
+    // SAFE parsing
+    const malicious = Number(data.malicious || 0);
+    const harmless = Number(data.harmless || 0);
+    const suspicious = Number(data.suspicious || 0);
 
     const total = malicious + harmless + suspicious;
     const isDanger = malicious > 0;
