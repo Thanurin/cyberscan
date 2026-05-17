@@ -4,13 +4,12 @@ const fileInput = document.getElementById("fileInput");
 const fileInfo = document.getElementById("fileInfo");
 const progress = document.getElementById("progress");
 const scanStatus = document.getElementById("scanStatus");
-
 const results = document.getElementById("results");
 
-// 🔗 Cloudflare Worker backend (IMPORTANT: no localhost)
+// 🌐 Backend URL (Cloudflare Worker)
 const BACKEND_URL = "https://cyberscan-backend.thanurin8.workers.dev";
 
-/* ---------------- FILE EVENTS ---------------- */
+/* ---------------- EVENTS ---------------- */
 
 dropArea.addEventListener("click", () => fileInput.click());
 
@@ -36,22 +35,18 @@ dropArea.addEventListener("drop", (e) => {
 /* ---------------- HANDLE FILE ---------------- */
 
 function handleFile(file) {
-
     if (!file) return;
 
     fileInfo.style.display = "block";
 
     document.getElementById("fileName").innerText = file.name;
-
     document.getElementById("fileSize").innerText =
         (file.size / 1024 / 1024).toFixed(2) + " MB";
 
     let percent = 0;
-
     scanStatus.innerText = "Preparing upload...";
 
     const progressAnim = setInterval(() => {
-
         percent += 5;
         progress.style.width = percent + "%";
 
@@ -67,15 +62,18 @@ function handleFile(file) {
             clearInterval(progressAnim);
             uploadToBackend(file);
         }
-
     }, 70);
 }
 
-/* ---------------- BACKEND REQUEST ---------------- */
+/* ---------------- BACKEND ---------------- */
 
 async function uploadToBackend(file) {
-
     try {
+
+        if (!file) {
+            alert("No file selected");
+            return;
+        }
 
         const formData = new FormData();
         formData.append("file", file);
@@ -87,15 +85,13 @@ async function uploadToBackend(file) {
 
         const data = await res.json();
 
-        // ❗ HANDLE BACKEND ERROR
         if (!res.ok) {
             throw new Error(data.error || "Backend error");
         }
 
-        // ❗ HANDLE TIMEOUT
         if (data.status === "TIMEOUT") {
-            scanStatus.innerText = "Scan still processing. Try again.";
-            alert("VirusTotal is still scanning. Please wait and retry.");
+            scanStatus.innerText = "Scan still processing...";
+            alert("VirusTotal is still scanning. Try again.");
             return;
         }
 
@@ -104,20 +100,18 @@ async function uploadToBackend(file) {
         showResults(file, data);
 
     } catch (err) {
-
-        console.error("SCAN ERROR:", err);
-        scanStatus.innerText = "Backend error";
+        console.error(err);
+        scanStatus.innerText = "Scan failed";
         alert("Backend error: " + err.message);
     }
 }
 
-/* ---------------- SHOW RESULTS ---------------- */
+/* ---------------- RESULTS ---------------- */
 
 function showResults(file, data) {
 
     results.style.display = "block";
 
-    // SAFE parsing
     const malicious = Number(data.malicious || 0);
     const harmless = Number(data.harmless || 0);
     const suspicious = Number(data.suspicious || 0);
@@ -129,7 +123,6 @@ function showResults(file, data) {
     const statusBadge = document.getElementById("statusBadge");
 
     if (isDanger) {
-
         finalResult.innerText = "DANGEROUS";
         finalResult.className = "danger";
 
@@ -137,9 +130,7 @@ function showResults(file, data) {
         statusBadge.className = "danger";
 
         document.getElementById("statusText").innerText = "Malware Detected";
-
     } else {
-
         finalResult.innerText = "SAFE";
         finalResult.className = "safe";
 
