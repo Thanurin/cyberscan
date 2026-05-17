@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="description" content="Free online virus file scanner like VirusTotal">
+    <meta name="keywords" content="virus scanner, malware scanner, file scan online">
+    <meta name="robots" content="index, follow">
+    <meta name="google-site-verification" content="19wYpEBQeAsVKTcj2pTkqQOluHVxjQJPccUoCKFdl5w" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CyberScan</title>
+    <link rel="icon" href="Cybersecurity in the digital age.png">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <nav class="navbar">
+
+        <div class="logo">
+            <div class="logo-icon">🛡️</div>
+            CyberScan
+        </div>
+    </nav>
+
+    <section class="hero">
+
+        <h1>Analyze suspicious files instantly</h1>
+
+        <p>
+            Upload files to scan for viruses, malware, trojans and threats using multiple antivirus engines.
+        </p>
+
+        <div class="upload-box">
+
+            <div class="drop-area" id="dropArea">
+
+                <div class="upload-icon">📁</div>
+
+                <h2>Drag & Drop Files</h2>
+
+                <p>or click below to upload your file</p>
+
+                <button class="upload-btn">
+                    Upload File
+                </button>
+
+                <input type="file" id="fileInput">
+
+            </div>
+
+            <div class="file-info" id="fileInfo">
+
+                <div class="file-card">
+
+                    <div class="file-top">
+
+                        <div>
+                            <div class="file-name" id="fileName">
+                                setup.exe
+                            </div>
+
+                            <div class="file-size" id="fileSize">
+                                4.2 MB
+                            </div>
+                        </div>
+
+                        <div class="safe" id="statusBadge">
+                            Scanning...
+                        </div>
+
+                    </div>
+
+                    <div class="progress-area">
+
+                        <div class="progress-bar">
+                            <div class="progress" id="progress"></div>
+                        </div>
+
+                        <div class="scan-status" id="scanStatus">
+                            Uploading file...
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="results" id="results">
+
+                <div class="result-card">
+
+                    <div class="result-top">
+
+                        <h2>Scan Result</h2>
+
+                        <div class="safe" id="finalResult">
+                            SAFE
+                        </div>
+
+                    </div>
+
+                    <div class="stats">
+
+                        <div class="stat-box">
+                            <h3>Detection Ratio</h3>
+                            <p id="ratio">0 / 72</p>
+                        </div>
+
+                        <div class="stat-box">
+                            <h3>File Type</h3>
+                            <p id="fileType">EXE</p>
+                        </div>
+
+                        <div class="stat-box">
+                            <h3>File Size</h3>
+                            <p id="finalSize">4.2 MB</p>
+                        </div>
+
+                        <div class="stat-box">
+                            <h3>Status</h3>
+                            <p id="statusText">Clean</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <footer class="footer">
+        © 2026 CyberScan Security Platform
+    </footer>
+
+    <script src="js.js"></script>
+
+</body>
+</html>
