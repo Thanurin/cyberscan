@@ -1,127 +1,138 @@
-const dropArea = document.getElementById("dropArea");
-const fileInput = document.getElementById("fileInput");
+export default {
+  async fetch(request, env) {
 
-const fileInfo = document.getElementById("fileInfo");
-const progress = document.getElementById("progress");
-const scanStatus = document.getElementById("scanStatus");
-const results = document.getElementById("results");
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    };
 
-const BACKEND_URL = "https://cyberscan-backend.thanurin8.workers.dev/";
+    if (request.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders });
+    }
 
-/* ---------------- INIT UI ---------------- */
+    if (request.method !== "POST") {
+      return new Response("POST only", { status: 405, headers: corsHeaders });
+    }
 
-// Make sure UI is reset on load
-fileInfo.style.display = "none";
-results.style.display = "none";
-progress.style.width = "0%";
-
-/* ---------------- FILE EVENTS ---------------- */
-
-dropArea.addEventListener("click", () => {
-    fileInput.value = ""; // reset so same file can re-upload
-    fileInput.click();
-});
-
-fileInput.addEventListener("change", (e) => {
-    handleFile(e.target.files?.[0]);
-});
-
-dropArea.addEventListener("dragover", (e) => {
-    e.preventDefault();
-});
-
-dropArea.addEventListener("drop", (e) => {
-    e.preventDefault();
-    handleFile(e.dataTransfer.files?.[0]);
-});
-
-/* ---------------- HANDLE FILE ---------------- */
-
-function handleFile(file) {
-    if (!file) return;
-
-    // reset UI when new file selected
-    results.style.display = "none";
-
-    fileInfo.style.display = "block";
-
-    document.getElementById("fileName").innerText = file.name;
-    document.getElementById("fileSize").innerText =
-        (file.size / 1024 / 1024).toFixed(2) + " MB";
-
-    scanStatus.innerText = "Uploading...";
-
-    progress.style.width = "30%";
-
-    uploadToBackend(file);
-}
-
-/* ---------------- BACKEND ---------------- */
-
-async function uploadToBackend(file) {
     try {
 
-        const formData = new FormData();
-        formData.append("file", file);
+      if (!env.VT_API_KEY) {
+        return Response.json(
+          { error: "Missing VT_API_KEY" },
+          { status: 500, headers: corsHeaders }
+        );
+      }
 
-        const res = await fetch(BACKEND_URL, {
-            method: "POST",
-            body: formData
-        });
+      const formData = await request.formData();
+      const file = formData.get("file");
+
+      if (!file) {
+        return Response.json(
+          { error: "No file uploaded" },
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      // ---------------- UPLOAD ----------------
+      const vtForm = new FormData();
+      vtForm.append("file", file);
+
+      const uploadRes = await fetch(
+        "https://www.virustotal.com/api/v3/files",
+        {
+          method: "POST",
+          headers: {
+            "x-apikey": env.VT_API_KEY,
+          },
+          body: vtForm,
+        }
+      );
+
+      const uploadText = await uploadRes.text();
+
+      if (!uploadRes.ok) {
+        return Response.json({
+          error: "VirusTotal upload failed",
+          status: uploadRes.status,
+          details: uploadText
+        }, { status: 500, headers: corsHeaders });
+      }
+
+      let uploadData;
+      try {
+        uploadData = JSON.parse(uploadText);
+      } catch {
+        return Response.json({
+          error: "Invalid VirusTotal response",
+          raw: uploadText
+        }, { status: 500, headers: corsHeaders });
+      }
+
+      const analysisId = uploadData?.data?.id;
+
+      if (!analysisId) {
+        return Response.json({
+          error: "No analysis ID returned",
+          data: uploadData
+        }, { status: 500, headers: corsHeaders });
+      }
+
+      // ---------------- ANALYSIS ----------------
+      let stats = null;
+
+      for (let i = 0; i < 15; i++) {
+
+        await new Promise(r => setTimeout(r, 4000));
+
+        const res = await fetch(
+          `https://www.virustotal.com/api/v3/analyses/${analysisId}`,
+          {
+            headers: {
+              "x-apikey": env.VT_API_KEY,
+            },
+          }
+        );
 
         const data = await res.json();
+        const status = data?.data?.attributes?.status;
 
-        if (!res.ok) {
-            throw new Error(data.error || "Backend error");
+        if (status === "completed") {
+          stats = data?.data?.attributes?.stats;
+          break;
         }
+      }
 
-        scanStatus.innerText = "Scan completed";
+      if (!stats) {
+        return Response.json({
+          status: "TIMEOUT",
+          message: "Scan not finished yet"
+        }, { headers: corsHeaders });
+      }
 
-        progress.style.width = "100%";
+      const malicious = stats.malicious || 0;
+      const suspicious = stats.suspicious || 0;
+      const harmless = stats.harmless || 0;
+      const undetected = stats.undetected || 0;
 
-        showResults(file, data);
+      const total = malicious + suspicious + harmless + undetected;
+
+      return Response.json({
+        status: (malicious > 0 || suspicious > 0) ? "DANGEROUS" : "SAFE",
+        malicious,
+        suspicious,
+        harmless,
+        undetected,
+        total,
+        fileName: file.name,
+        fileSize: file.size
+      }, { headers: corsHeaders });
 
     } catch (err) {
-        console.error(err);
-        scanStatus.innerText = "Scan failed";
-        alert(err.message);
+      return Response.json({
+        error: "Worker crashed",
+        message: err.message
+      }, { status: 500, headers: corsHeaders });
     }
-}
-
-/* ---------------- RESULTS ---------------- */
-
-function showResults(file, data) {
-
-    results.style.display = "block";
-
-    const malicious = data.malicious || 0;
-    const suspicious = data.suspicious || 0;
-    const harmless = data.harmless || 0;
-    const undetected = data.undetected || 0;
-    const timeout = data.timeout || 0;
-
-    const total =
-        malicious +
-        suspicious +
-        harmless +
-        undetected +
-        timeout;
-
-    const isDanger =
-        malicious > 0 || suspicious > 0;
-
-    document.getElementById("finalResult").innerText =
-        isDanger ? "DANGEROUS" : "SAFE";
-
-    document.getElementById("statusText").innerText =
-        isDanger ? "Malware Detected" : "Clean";
-
-    document.getElementById("ratio").innerText =
-        `${malicious + suspicious} / ${total}`;
-
-    document.getElementById("fileType").innerText =
-        file.name.split('.').pop().toUpperCase();
-
-    document.getElementById("finalSize").innerText =
-        (file.size / 1024 / 1024).toFixed(2) + " MB";
-}
+  }
+};
