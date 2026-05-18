@@ -12,7 +12,6 @@ body{
     overflow-x:hidden;
 }
 
-/* background glow */
 body::before{
     content:'';
     position:fixed;
@@ -37,7 +36,6 @@ body::after{
     z-index:-1;
 }
 
-/* navbar */
 .navbar{
     width:100%;
     padding:18px 7%;
@@ -68,7 +66,22 @@ body::after{
     box-shadow:0 0 20px #2563eb60;
 }
 
-/* hero */
+.nav-links{
+    display:flex;
+    gap:25px;
+}
+
+.nav-links a{
+    text-decoration:none;
+    color:#cbd5e1;
+    transition:0.3s;
+    font-size:15px;
+}
+
+.nav-links a:hover{
+    color:white;
+}
+
 .hero{
     width:100%;
     padding:80px 7%;
@@ -79,6 +92,7 @@ body::after{
     font-size:58px;
     margin-bottom:20px;
     background:linear-gradient(90deg,#ffffff,#60a5fa);
+    background-clip:text;
     -webkit-background-clip:text;
     -webkit-text-fill-color:transparent;
 }
@@ -91,7 +105,6 @@ body::after{
     font-size:17px;
 }
 
-/* upload box */
 .upload-box{
     width:100%;
     max-width:850px;
@@ -102,11 +115,8 @@ body::after{
     padding:45px;
     backdrop-filter:blur(15px);
     box-shadow:0 0 40px rgba(0,0,0,0.3);
-
-    position:relative; /* IMPORTANT FIX */
 }
 
-/* drop area (FIX CLICK ISSUE) */
 .drop-area{
     border:2px dashed #3b82f6;
     border-radius:24px;
@@ -114,9 +124,6 @@ body::after{
     cursor:pointer;
     transition:0.3s;
     background:rgba(37,99,235,0.08);
-
-    position:relative;
-    z-index:10; /* IMPORTANT FIX */
 }
 
 .drop-area:hover{
@@ -150,51 +157,85 @@ body::after{
     cursor:pointer;
 }
 
-/* file input hidden */
 #fileInput{
     display:none;
 }
 
-/* file info */
 .file-info{
     margin-top:30px;
     display:none;
 }
 
-/* results FIX (NO OVERLAY BUG) */
-.results{
-    margin-top:35px;
-    display:none;
-
-    position:relative;
-    z-index:1; /* IMPORTANT FIX */
-}
-
-/* cards */
-.file-card,
-.result-card{
+.file-card{
     background:#111827;
-    border-radius:22px;
-    padding:25px;
+    border-radius:20px;
+    padding:22px;
     border:1px solid rgba(255,255,255,0.06);
 }
 
-/* stats */
-.stats{
-    margin-top:30px;
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-    gap:20px;
+.file-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:10px;
 }
 
-.stat-box{
-    background:#0f172a;
-    border-radius:18px;
-    padding:20px;
-    border:1px solid rgba(255,255,255,0.05);
+.file-name{
+    font-size:17px;
+    font-weight:600;
 }
 
-/* safe / danger */
+.file-size{
+    color:#94a3b8;
+}
+
+.progress-area{
+    margin-top:25px;
+}
+
+.progress-bar{
+    width:100%;
+    height:14px;
+    background:#1e293b;
+    border-radius:999px;
+    overflow:hidden;
+}
+
+.progress{
+    width:0%;
+    height:100%;
+    background:linear-gradient(90deg,#2563eb,#00ffae);
+    border-radius:999px;
+    transition:0.3s;
+}
+
+.scan-status{
+    margin-top:12px;
+    color:#cbd5e1;
+    font-size:14px;
+}
+
+.results{
+    margin-top:35px;
+    display:none;
+}
+
+.result-card{
+    background:#111827;
+    border-radius:22px;
+    padding:30px;
+    border:1px solid rgba(255,255,255,0.06);
+}
+
+.result-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:15px;
+}
+
 .safe{
     background:#052e16;
     color:#4ade80;
@@ -211,7 +252,31 @@ body::after{
     font-weight:600;
 }
 
-/* footer */
+.stats{
+    margin-top:30px;
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:20px;
+}
+
+.stat-box{
+    background:#0f172a;
+    border-radius:18px;
+    padding:20px;
+    border:1px solid rgba(255,255,255,0.05);
+}
+
+.stat-box h3{
+    color:#94a3b8;
+    margin-bottom:10px;
+    font-size:14px;
+}
+
+.stat-box p{
+    font-size:28px;
+    font-weight:700;
+}
+
 .footer{
     margin-top:80px;
     padding:30px;
@@ -220,17 +285,41 @@ body::after{
     border-top:1px solid rgba(255,255,255,0.08);
 }
 
-/* mobile */
 @media(max-width:768px){
-    .hero h1{
-        font-size:38px;
-    }
 
-    .upload-box{
-        padding:25px;
-    }
+.hero h1{
+    font-size:38px;
+}
 
-    .drop-area{
-        padding:50px 15px;
-    }
+.upload-box{
+    padding:25px;
+}
+
+.drop-area{
+    padding:50px 15px;
+}
+
+.nav-links{
+    display:none;
+}
+
+}
+
+/* ========================= */
+/* ✅ FIX ONLY (DO NOT TOUCH DESIGN) */
+/* ========================= */
+
+#dropArea {
+    position: relative;
+    z-index: 10;
+    cursor: pointer;
+}
+
+#results {
+    position: relative;
+    z-index: 1;
+}
+
+.upload-box {
+    position: relative;
 }
